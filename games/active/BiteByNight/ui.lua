@@ -1,22 +1,32 @@
 local UIBuilder = {}
 
 function UIBuilder.Create(ctx, config, settings, features)
+    local logger = ctx.App.Logger
     local UILibrary = ctx.Loader:LoadUILibrary()
-    local window = UILibrary:CreateWindow(config.WindowTitle, config.WindowToggleKey)
 
-    local tab = window:CreateTab(config.TabName, config.TabIcon)
-    tab:SetHeader(config.TabHeaderTitle, config.TabHeaderSubtitle)
+    local window = ctx.UI.Window.Create(UILibrary, {
+        Title = config.WindowTitle,
+        ToggleKey = config.WindowToggleKey,
+    })
 
-    local infoLabel = tab:Label("Status: ESP loaded")
+    local tab = ctx.UI.Tabs.Create(window, {
+        Name = config.TabName,
+        Icon = config.TabIcon,
+        HeaderTitle = config.TabHeaderTitle,
+        HeaderSubtitle = config.TabHeaderSubtitle,
+    })
+
+    local infoLabel = ctx.UI.Controls.CreateStatusLabel(tab, "Status: ESP loaded")
 
     local function setStatus(text)
         infoLabel:Set("Status: " .. tostring(text))
     end
 
     local function addCategory(categoryName, displayName)
-        tab:Divider(displayName .. " ESP")
+        ctx.UI.Controls.CreateDivider(tab, displayName .. " ESP")
 
-        tab:Toggle(
+        ctx.UI.Controls.CreateToggle(
+            tab,
             displayName .. " ESP",
             settings[categoryName].Enabled,
             function(value)
@@ -34,7 +44,8 @@ function UIBuilder.Create(ctx, config, settings, features)
             }
         )
 
-        tab:Dropdown(
+        ctx.UI.Controls.CreateDropdown(
+            tab,
             displayName .. " Features",
             config.FeatureOptions[categoryName],
             settings[categoryName].Features,
@@ -56,6 +67,8 @@ function UIBuilder.Create(ctx, config, settings, features)
     addCategory("Battery", "Battery")
     addCategory("Fuse", "Fuse")
     addCategory("Trap", "Trap")
+
+    logger:Info("Built Bite By Night UI.")
 
     return {
         Window = window,

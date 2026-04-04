@@ -30,19 +30,32 @@ end
 
 local ctx = Bootstrap.CreateContext(Registry, selectedGame)
 
+if routeMessage then
+    ctx.App.Logger:Info(routeMessage)
+end
+
 local gameEntryUrl = selectedGame.Entry
-if not gameEntryUrl or gameEntryUrl == "" then
-    error(string.format("[Loader] Missing Entry URL for game: %s", tostring(selectedGame.Name)))
+if type(gameEntryUrl) ~= "string" or gameEntryUrl == "" then
+    ctx.App.Logger:Error(string.format(
+        "Missing Entry URL for game: %s",
+        tostring(selectedGame.Name)
+    ))
 end
 
 local gameModule = ctx.Loader:LoadModule(gameEntryUrl)
 
 if type(gameModule) ~= "table" then
-    error(string.format("[Loader] Game entry did not return a table: %s", tostring(selectedGame.Name)))
+    ctx.App.Logger:Error(string.format(
+        "Game entry did not return a table: %s",
+        tostring(selectedGame.Name)
+    ))
 end
 
 if type(gameModule.Init) ~= "function" then
-    error(string.format("[Loader] Game entry is missing Init(ctx): %s", tostring(selectedGame.Name)))
+    ctx.App.Logger:Error(string.format(
+        "Game entry is missing Init(ctx): %s",
+        tostring(selectedGame.Name)
+    ))
 end
 
 local ok, err = pcall(function()
@@ -50,5 +63,28 @@ local ok, err = pcall(function()
 end)
 
 if not ok then
-    error(string.format("[Loader] Failed to initialize game '%s': %s", tostring(selectedGame.Name), tostring(err)))
+    ctx.App.Logger:Warn(string.format(
+        "Game init failed for '%s': %s",
+        tostring(selectedGame.Name),
+        tostring(err)
+    ))
+
+    pcall(function()
+        ctx.App.Runtime:StopAll()
+    end)
+
+    pcall(function()
+        ctx.App.Cleanup:Run()
+    end)
+
+    error(string.format(
+        "[Loader] Failed to initialize game '%s': %s",
+        tostring(selectedGame.Name),
+        tostring(err)
+    ))
 end
+
+ctx.App.Logger:Info(string.format(
+    "Game '%s' initialized successfully.",
+    tostring(selectedGame.Name)
+))

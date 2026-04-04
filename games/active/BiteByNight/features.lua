@@ -1,29 +1,30 @@
 local Features = {}
 
-local function featureListToMap(list)
-    local map = {}
-
-    for _, name in ipairs(list or {}) do
-        if name == "Progress Tracker" then
-            map.ProgressTracker = true
-        else
-            map[name] = true
-        end
-    end
-
-    return map
-end
-
 function Features.Create(ctx, config, scanners, settings)
+    local Tables = ctx.Shared.Tables
+    local logger = ctx.App.Logger
+
     local ESPManager = ctx.Loader:LoadModule(ctx.BaseUrl .. "/features/esp/manager.lua")
     local esp = ESPManager.new(ctx.Shared.Services.Workspace)
+
+    local function featureListToMap(list)
+        local map = {}
+
+        for _, name in ipairs(list or {}) do
+            if name == "Progress Tracker" then
+                map.ProgressTracker = true
+            else
+                map[name] = true
+            end
+        end
+
+        return map
+    end
 
     local definitions = {
         Player = {
             Color = config.Colors.Player,
-            GetTargets = function()
-                return scanners.GetPlayerTargets()
-            end,
+            GetTargets = scanners.GetPlayerTargets,
             Features = function()
                 return featureListToMap(settings.Player.Features)
             end,
@@ -34,9 +35,7 @@ function Features.Create(ctx, config, scanners, settings)
 
         Killer = {
             Color = config.Colors.Killer,
-            GetTargets = function()
-                return scanners.GetKillerTargets()
-            end,
+            GetTargets = scanners.GetKillerTargets,
             Features = function()
                 return featureListToMap(settings.Killer.Features)
             end,
@@ -47,9 +46,7 @@ function Features.Create(ctx, config, scanners, settings)
 
         Generator = {
             Color = config.Colors.Generator,
-            GetTargets = function()
-                return scanners.GetGeneratorTargets()
-            end,
+            GetTargets = scanners.GetGeneratorTargets,
             Features = function()
                 return featureListToMap(settings.Generator.Features)
             end,
@@ -60,9 +57,7 @@ function Features.Create(ctx, config, scanners, settings)
 
         Battery = {
             Color = config.Colors.Battery,
-            GetTargets = function()
-                return scanners.GetBatteryTargets()
-            end,
+            GetTargets = scanners.GetBatteryTargets,
             Features = function()
                 return featureListToMap(settings.Battery.Features)
             end,
@@ -73,9 +68,7 @@ function Features.Create(ctx, config, scanners, settings)
 
         Fuse = {
             Color = config.Colors.Fuse,
-            GetTargets = function()
-                return scanners.GetFuseTargets()
-            end,
+            GetTargets = scanners.GetFuseTargets,
             Features = function()
                 return featureListToMap(settings.Fuse.Features)
             end,
@@ -86,9 +79,7 @@ function Features.Create(ctx, config, scanners, settings)
 
         Trap = {
             Color = config.Colors.Trap,
-            GetTargets = function()
-                return scanners.GetTrapTargets()
-            end,
+            GetTargets = scanners.GetTrapTargets,
             Features = function()
                 return featureListToMap(settings.Trap.Features)
             end,
@@ -103,6 +94,7 @@ function Features.Create(ctx, config, scanners, settings)
     function controller.RefreshCategory(category)
         local def = definitions[category]
         if not def then
+            logger:Warn("Tried to refresh unknown category: " .. tostring(category))
             return
         end
 
@@ -149,7 +141,7 @@ function Features.Create(ctx, config, scanners, settings)
     end
 
     function controller.GetDefinitions()
-        return definitions
+        return Tables.ShallowCopy(definitions)
     end
 
     return controller

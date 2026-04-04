@@ -22,13 +22,20 @@ function Router.FindGame(registry, currentPlaceId)
             local validPlaceIds = normalizePlaceIds(gameEntry.PlaceIds)
 
             if validPlaceIds[currentPlaceId] then
-                return gameEntry
+                return gameEntry, string.format(
+                    "Matched game '%s' for PlaceId %s",
+                    tostring(gameEntry.Name),
+                    tostring(currentPlaceId)
+                )
             end
         end
     end
 
     if registry.Universal and registry.Universal.Enabled then
-        return registry.Universal
+        return registry.Universal, string.format(
+            "No direct match found for PlaceId %s. Using universal fallback.",
+            tostring(currentPlaceId)
+        )
     end
 
     return nil, string.format("No supported game found for PlaceId: %s", tostring(currentPlaceId))

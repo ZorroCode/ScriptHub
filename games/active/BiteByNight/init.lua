@@ -1,5 +1,10 @@
 return {
     Init = function(ctx)
+        local logger = ctx.App.Logger
+        local runtime = ctx.App.Runtime
+        local cleanup = ctx.App.Cleanup
+        local localPlayer = ctx.Shared.LocalPlayer
+
         local Config = ctx.Loader:LoadGameModule("Config")
         local ScannersModule = ctx.Loader:LoadGameModule("Scanners")
         local FeaturesModule = ctx.Loader:LoadGameModule("Features")
@@ -10,31 +15,21 @@ return {
         local features = FeaturesModule.Create(ctx, Config, scanners, settings)
         local ui = UIModule.Create(ctx, Config, settings, features)
 
-        local runService = ctx.Shared.Services.RunService
-        local localPlayer = ctx.Shared.LocalPlayer
-
-        do
-            local elapsed = 0
-
-            ui.Window:GiveTask(runService.Heartbeat:Connect(function(dt)
-                elapsed += dt
-
-                if elapsed < Config.UpdateInterval then
-                    return
-                end
-
-                elapsed = 0
-                features.RefreshAll()
-            end))
-        end
+        runtime:Every(Config.UpdateInterval, function()
+            features.RefreshAll()
+        end)
 
         if localPlayer then
-            ui.Window:GiveTask(localPlayer.CharacterAdded:Connect(function()
+            runtime:Bind(localPlayer.CharacterAdded, function()
                 task.wait(1)
                 features.RefreshAll()
-            end))
+            end)
         end
 
-        print("[Bite By Night] Loaded. Use RightAlt to toggle UI.")
+        cleanup:Add(function()
+            features.DestroyAll()
+        end)
+
+        logger:Info("[Bite By Night] Loaded. Use RightAlt to toggle UI.")
     end,
 }

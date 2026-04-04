@@ -1,58 +1,27 @@
 local Scanners = {}
 
 function Scanners.Create(ctx)
-    local Players = ctx.Shared.Services.Players
-    local Workspace = ctx.Shared.Services.Workspace
-    local LocalPlayer = ctx.Shared.LocalPlayer
+    local services = ctx.Shared.Services
+    local playersService = services.Players
+    local workspace = services.Workspace
+    local localPlayer = ctx.Shared.LocalPlayer
+
+    local Instances = ctx.Shared.Instances
+    local Formatting = ctx.Shared.Formatting
+    local PlayersUtil = ctx.Shared.Players
 
     local API = {}
 
     local function safeFind(parent, childName)
-        return parent and parent:FindFirstChild(childName) or nil
+        return Instances.SafeFind(parent, childName)
     end
 
     local function listChildren(folder)
-        if not folder then
-            return {}
-        end
-
-        return folder:GetChildren()
-    end
-
-    local function appendUnique(targets, seen, object)
-        if not object or seen[object] then
-            return
-        end
-
-        if object:IsA("Model") or object:IsA("BasePart") then
-            seen[object] = true
-            table.insert(targets, object)
-        end
-    end
-
-    local function collectNamedTargetsRecursive(root, targetName)
-        local targets = {}
-        local seen = {}
-
-        if not root then
-            return targets
-        end
-
-        if root.Name == targetName then
-            appendUnique(targets, seen, root)
-        end
-
-        for _, obj in ipairs(root:GetDescendants()) do
-            if obj.Name == targetName then
-                appendUnique(targets, seen, obj)
-            end
-        end
-
-        return targets
+        return Instances.ListChildren(folder)
     end
 
     function API.GetCharacter()
-        return LocalPlayer and LocalPlayer.Character or nil
+        return PlayersUtil.GetCharacter(localPlayer)
     end
 
     function API.GetHumanoid(model)
@@ -64,27 +33,11 @@ function Scanners.Create(ctx)
     end
 
     function API.IsHumanoidAlive(model)
-        local hum = API.GetHumanoid(model)
-        return hum and hum.Health > 0
+        return Instances.IsAliveHumanoid(model)
     end
 
     function API.GetRootPart(instance)
-        if not instance or not instance.Parent then
-            return nil
-        end
-
-        if instance:IsA("BasePart") then
-            return instance
-        end
-
-        if instance:IsA("Model") then
-            return instance:FindFirstChild("HumanoidRootPart")
-                or instance.PrimaryPart
-                or instance:FindFirstChild("Head")
-                or instance:FindFirstChildWhichIsA("BasePart", true)
-        end
-
-        return nil
+        return Instances.GetRootPart(instance)
     end
 
     function API.GetLocalRoot()
@@ -100,16 +53,12 @@ function Scanners.Create(ctx)
             return nil
         end
 
-        return math.floor((localRoot.Position - targetRoot.Position).Magnitude + 0.5)
+        return (localRoot.Position - targetRoot.Position).Magnitude
     end
 
     function API.GetDistanceText(instance)
-        local dist = API.GetDistanceTo(instance)
-        if not dist then
-            return nil
-        end
-
-        return string.format("%d studs", dist)
+        local distance = API.GetDistanceTo(instance)
+        return Formatting.DistanceStuds(distance)
     end
 
     function API.GetDisplayName(model)
@@ -131,10 +80,7 @@ function Scanners.Create(ctx)
             return nil
         end
 
-        local hp = math.floor(hum.Health + 0.5)
-        local maxHp = math.floor(hum.MaxHealth + 0.5)
-
-        return string.format("HP: %d/%d", hp, maxHp)
+        return Formatting.Health(hum.Health, hum.MaxHealth)
     end
 
     function API.GetProgressText(generator)
@@ -152,39 +98,19 @@ function Scanners.Create(ctx)
             return nil
         end
 
-        numberProgress = math.clamp(math.floor(numberProgress + 0.5), 0, 100)
-        return string.format("Progress: %d%%", numberProgress)
+        return Formatting.Progress(numberProgress)
     end
 
     function API.GetPlayerFromCharacterModel(model)
-        if not model or not model:IsA("Model") then
-            return nil
-        end
-
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player.Character == model then
-                return player
-            end
-        end
-
-        return nil
+        return PlayersUtil.GetPlayerFromCharacter(playersService, model)
     end
 
     function API.IsLocalPlayerTarget(target)
-        if not target or not target:IsA("Model") then
-            return false
-        end
-
-        if LocalPlayer and target == LocalPlayer.Character then
-            return true
-        end
-
-        local owner = API.GetPlayerFromCharacterModel(target)
-        return owner == LocalPlayer
+        return PlayersUtil.IsLocalCharacter(playersService, localPlayer, target)
     end
 
     function API.GetActiveMap()
-        local mapsFolder = safeFind(Workspace, "MAPS")
+        local mapsFolder = safeFind(workspace, "MAPS")
         if not mapsFolder then
             return nil
         end
@@ -208,17 +134,17 @@ function Scanners.Create(ctx)
     end
 
     function API.GetAlivePlayersFolder()
-        local playersFolder = safeFind(Workspace, "PLAYERS")
+        local playersFolder = safeFind(workspace, "PLAYERS")
         return playersFolder and playersFolder:FindFirstChild("ALIVE") or nil
     end
 
     function API.GetKillerFolder()
-        local playersFolder = safeFind(Workspace, "PLAYERS")
+        local playersFolder = safeFind(workspace, "PLAYERS")
         return playersFolder and playersFolder:FindFirstChild("KILLER") or nil
     end
 
     function API.GetIgnoreFolder()
-        return safeFind(Workspace, "IGNORE")
+        return safeFind(workspace, "IGNORE")
     end
 
     function API.ShouldHideGeneratorFromProgressTracker(generator, featureFlags)
@@ -252,11 +178,11 @@ function Scanners.Create(ctx)
     end
 
     function API.GetBatteryTargets()
-        return collectNamedTargetsRecursive(API.GetIgnoreFolder(), "Battery")
+        return Instances.CollectNamedTargetsRecursive(API.GetIgnoreFolder(), "Battery")
     end
 
     function API.GetTrapTargets()
-        return collectNamedTargetsRecursive(API.GetIgnoreFolder(), "Trap")
+        return Instances.CollectNamedTargetsRecursive(API.GetIgnoreFolder(), "Trap")
     end
 
     function API.GetPlayerTargets()
