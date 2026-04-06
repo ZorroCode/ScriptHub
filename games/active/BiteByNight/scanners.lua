@@ -182,7 +182,23 @@ function Scanners.Create(ctx)
     end
 
     function API.GetTrapTargets()
-        return Instances.CollectNamedTargetsRecursive(API.GetIgnoreFolder(), "Trap")
+        local ignoreFolder = API.GetIgnoreFolder()
+        local targets = {}
+        local seen = {}
+
+        local function appendTargetsByName(targetName)
+            for _, object in ipairs(Instances.CollectNamedTargetsRecursive(ignoreFolder, targetName)) do
+                if not seen[object] then
+                    seen[object] = true
+                    table.insert(targets, object)
+                end
+            end
+        end
+
+        appendTargetsByName("Trap")
+        appendTargetsByName("Minion")
+
+        return targets
     end
 
     function API.GetPlayerTargets()
@@ -243,6 +259,24 @@ function Scanners.Create(ctx)
         end
 
         return targets
+    end
+
+    function API.GetStaminaText(instance)
+        if not instance or not instance:IsA("Model") then
+            return nil
+        end
+
+        local stamina = instance:GetAttribute("Stamina")
+        if stamina == nil then
+            return nil
+        end
+
+        local num = tonumber(stamina)
+        if num then
+            return string.format("Stamina: %d", math.floor(num + 0.5))
+        end
+
+        return "Stamina: " .. tostring(stamina)
     end
 
     return API

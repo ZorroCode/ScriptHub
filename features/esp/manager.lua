@@ -153,6 +153,7 @@ function ESPManager:UpdateEntry(category, target, color, featureFlags, resolver)
 
     local wantsText = featureFlags.NameTag
         or featureFlags.Health
+        or featureFlags.Stamina
         or featureFlags.Distance
         or featureFlags.ProgressTracker
 
@@ -172,6 +173,13 @@ function ESPManager:UpdateEntry(category, target, color, featureFlags, resolver)
 
         if featureFlags.Health then
             local text = resolver.GetHealthText(target)
+            if text then
+                table.insert(lines, text)
+            end
+        end
+
+        if featureFlags.Stamina then
+            local text = resolver.GetStaminaText and resolver.GetStaminaText(target)
             if text then
                 table.insert(lines, text)
             end

@@ -21,8 +21,8 @@ Config.Colors = {
 }
 
 Config.FeatureOptions = {
-    Player = { "NameTag", "Health", "Distance", "Highlight" },
-    Killer = { "NameTag", "Health", "Distance", "Highlight" },
+    Player = { "NameTag", "Health", "Stamina", "Distance", "Highlight" },
+    Killer = { "NameTag", "Health", "Stamina", "Distance", "Highlight" },
     Generator = { "Distance", "Highlight", "Progress Tracker" },
     Battery = { "Distance", "Highlight" },
     Fuse = { "Distance", "Highlight" },

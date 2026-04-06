@@ -117,6 +117,7 @@ function Features.Create(ctx, config, scanners, settings)
                     GetRootPart = scanners.GetRootPart,
                     GetDisplayName = scanners.GetDisplayName,
                     GetHealthText = scanners.GetHealthText,
+                    GetStaminaText = scanners.GetStaminaText,
                     GetProgressText = scanners.GetProgressText,
                     GetDistanceText = scanners.GetDistanceText,
                 })
