@@ -17,9 +17,14 @@ local function loadRemoteModule(url)
     return result
 end
 
-local Registry = loadRemoteModule(BASE_URL .. "/loader/registry.lua")
-local Router = loadRemoteModule(BASE_URL .. "/loader/router.lua")
-local Bootstrap = loadRemoteModule(BASE_URL .. "/loader/bootstrap.lua")
+local ModuleLoader = loadRemoteModule(BASE_URL .. "/core/module_loader.lua")
+local loader = ModuleLoader.new(function(url)
+    return game:HttpGet(url)
+end, loadstring)
+
+local Registry = loader:LoadModule(BASE_URL .. "/loader/registry.lua")
+local Router = loader:LoadModule(BASE_URL .. "/loader/router.lua")
+local Bootstrap = loader:LoadModule(BASE_URL .. "/loader/bootstrap.lua")
 
 local selectedGame, routeMessage = Router.FindGame(Registry, game.PlaceId)
 
@@ -28,7 +33,7 @@ if not selectedGame then
     return
 end
 
-local ctx = Bootstrap.CreateContext(Registry, selectedGame)
+local ctx = Bootstrap.CreateContext(Registry, selectedGame, loader)
 
 if routeMessage then
     ctx.App.Logger:Info(routeMessage)

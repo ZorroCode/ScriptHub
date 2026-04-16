@@ -1,25 +1,61 @@
 local Features = {}
 
-function Features.Create(_ctx, _config, _scanners, settings)
-    local controller = {}
+function Features.Create(ctx, _config, scanners, settings)
+    local manager = ctx.Core.FeatureManager.new(ctx.App.Logger)
 
-    function controller.RefreshCategory(_category)
-    end
+    manager:Register("Diagnostics", {
+        Enabled = function()
+            return settings.Diagnostics.Enabled
+        end,
+        Refresh = function()
+            local targets = {}
 
-    function controller.RefreshAll()
-    end
+            if scanners and type(scanners.GetTargets) == "function" then
+                targets = scanners.GetTargets() or {}
+            end
 
-    function controller.DestroyCategory(_category)
-    end
+            ctx.App.State:Set("Diagnostics/LastTargetCount", #targets)
+            return nil
+        end,
+        Destroy = function()
+            ctx.App.State:Remove("Diagnostics/LastTargetCount")
+        end,
+    })
 
-    function controller.DestroyAll()
-    end
+    manager:Register("Actions", {
+        Enabled = function()
+            return settings.Actions.Enabled
+        end,
+        Refresh = function()
+            ctx.App.State:Set("Actions/LastRefreshAt", os.clock())
+            return nil
+        end,
+        Destroy = function()
+            ctx.App.State:Remove("Actions/LastRefreshAt")
+        end,
+    })
 
-    function controller.GetSettings()
-        return settings
-    end
+    return {
+        RefreshCategory = function(category)
+            manager:Refresh(category)
+        end,
 
-    return controller
+        RefreshAll = function()
+            manager:RefreshAll()
+        end,
+
+        DestroyCategory = function(category)
+            manager:Destroy(category)
+        end,
+
+        DestroyAll = function()
+            manager:DestroyAll()
+        end,
+
+        GetDefinitions = function()
+            return manager:GetDefinitions()
+        end,
+    }
 end
 
 return Features

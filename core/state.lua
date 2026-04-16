@@ -1,6 +1,27 @@
 local State = {}
 State.__index = State
 
+local function deepCopy(value, seen)
+    if type(value) ~= "table" then
+        return value
+    end
+
+    seen = seen or {}
+
+    if seen[value] then
+        return seen[value]
+    end
+
+    local copy = {}
+    seen[value] = copy
+
+    for key, child in pairs(value) do
+        copy[deepCopy(key, seen)] = deepCopy(child, seen)
+    end
+
+    return copy
+end
+
 function State.new()
     local self = setmetatable({}, State)
 
@@ -12,10 +33,10 @@ end
 
 function State:SetDefault(key, value)
     if self._data[key] == nil then
-        self._data[key] = value
+        self._data[key] = deepCopy(value)
     end
 
-    self._defaults[key] = value
+    self._defaults[key] = deepCopy(value)
 end
 
 function State:Set(key, value)
@@ -45,21 +66,11 @@ function State:Clear()
 end
 
 function State:ResetToDefaults()
-    self._data = {}
-
-    for key, value in pairs(self._defaults) do
-        self._data[key] = value
-    end
+    self._data = deepCopy(self._defaults)
 end
 
 function State:GetAll()
-    local copy = {}
-
-    for key, value in pairs(self._data) do
-        copy[key] = value
-    end
-
-    return copy
+    return deepCopy(self._data)
 end
 
 return State

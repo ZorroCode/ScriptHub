@@ -1,21 +1,37 @@
 local Config = {}
 
-Config.WindowTitle = "Game Template"
+Config.WindowTitle = "Atlas Template"
 Config.WindowToggleKey = Enum.KeyCode.RightAlt
 
 Config.TabName = "Main"
 Config.TabIcon = "rbxassetid://0"
-Config.TabHeaderTitle = "Main"
+Config.TabHeaderTitle = "Atlas"
 Config.TabHeaderSubtitle = "Template game module"
 
 Config.UpdateInterval = 0.10
-Config.DefaultESPKeybind = Enum.KeyCode.X
 
 function Config.CreateSettings()
     return {
-        Example = {
+        Diagnostics = {
             Enabled = false,
-            Features = {},
+        },
+        Actions = {
+            Enabled = false,
+        },
+    }
+end
+
+function Config.GetFeatureList()
+    return {
+        {
+            Key = "Diagnostics",
+            Title = "Diagnostics",
+            Description = "General diagnostic feature group",
+        },
+        {
+            Key = "Actions",
+            Title = "Actions",
+            Description = "General action feature group",
         },
     }
 end

@@ -1,49 +1,61 @@
 local BASE_URL = "https://raw.githubusercontent.com/ZorroCode/ScriptHub/refs/heads/main"
 
-return {
-    BaseUrl = BASE_URL,
+local function makeGame(def)
+    local key = def.Key
+    local name = def.Name or key
+    local folder = def.Folder or key
+    local gameRoot = def.Root or (BASE_URL .. "/games/active/" .. folder)
 
+    local sources = {
+        Init = gameRoot .. "/init.lua",
+        Config = gameRoot .. "/config.lua",
+        UI = gameRoot .. "/ui.lua",
+        Scanners = gameRoot .. "/scanners.lua",
+        Features = gameRoot .. "/features.lua",
+    }
+
+    if type(def.Sources) == "table" then
+        for sourceKey, sourceUrl in pairs(def.Sources) do
+            sources[sourceKey] = sourceUrl
+        end
+    end
+
+    return {
+        Name = name,
+        Key = key,
+        Enabled = def.Enabled ~= false,
+        PlaceIds = def.PlaceIds or {},
+        Entry = def.Entry or sources.Init,
+        Sources = sources,
+        Tags = def.Tags or {},
+    }
+end
+
+return {
+    ProductName = "Atlas",
+    BaseUrl = BASE_URL,
     UILibraryUrl = BASE_URL .. "/ui/library/UILibrary.lua",
 
     Games = {
-        {
+        makeGame({
             Name = "Bite By Night",
             Key = "BiteByNight",
-            Enabled = true,
-
-            -- Put the real PlaceId(s) here
             PlaceIds = {
                 70845479499574,
             },
-
-            Entry = BASE_URL .. "/games/active/BiteByNight/init.lua",
-
-            Sources = {
-                Init = BASE_URL .. "/games/active/BiteByNight/init.lua",
-                Config = BASE_URL .. "/games/active/BiteByNight/config.lua",
-                UI = BASE_URL .. "/games/active/BiteByNight/ui.lua",
-                Scanners = BASE_URL .. "/games/active/BiteByNight/scanners.lua",
-                Features = BASE_URL .. "/games/active/BiteByNight/features.lua",
+            Tags = {
+                "active",
             },
-        },
+        }),
 
-        -- Example for future games:
-        -- {
+        -- Example:
+        -- makeGame({
         --     Name = "Another Game",
         --     Key = "AnotherGame",
-        --     Enabled = true,
         --     PlaceIds = {
         --         1234567890,
         --     },
-        --     Entry = BASE_URL .. "/games/active/AnotherGame/init.lua",
-        --     Sources = {
-        --         Init = BASE_URL .. "/games/active/AnotherGame/init.lua",
-        --         Config = BASE_URL .. "/games/active/AnotherGame/config.lua",
-        --         UI = BASE_URL .. "/games/active/AnotherGame/ui.lua",
-        --         Scanners = BASE_URL .. "/games/active/AnotherGame/scanners.lua",
-        --         Features = BASE_URL .. "/games/active/AnotherGame/features.lua",
-        --     },
-        -- },
+        -- }),
     },
 
     Universal = {

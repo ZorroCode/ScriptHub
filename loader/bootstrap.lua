@@ -1,43 +1,5 @@
 local Bootstrap = {}
 
-local function safeLoadString(source, chunkName)
-    local compiled, err = loadstring(source, chunkName)
-
-    if not compiled then
-        error(string.format("[Bootstrap] Failed to compile %s: %s", tostring(chunkName), tostring(err)))
-    end
-
-    return compiled
-end
-
-local function loadRemoteSource(url)
-    local ok, result = pcall(function()
-        return game:HttpGet(url)
-    end)
-
-    if not ok then
-        error(string.format("[Bootstrap] Failed to fetch URL: %s\n%s", tostring(url), tostring(result)))
-    end
-
-    if type(result) ~= "string" or result == "" then
-        error(string.format("[Bootstrap] Empty response from URL: %s", tostring(url)))
-    end
-
-    return result
-end
-
-local function loadRemoteModule(url)
-    local source = loadRemoteSource(url)
-    local chunk = safeLoadString(source, "@" .. tostring(url))
-
-    local ok, result = pcall(chunk)
-    if not ok then
-        error(string.format("[Bootstrap] Failed to execute module: %s\n%s", tostring(url), tostring(result)))
-    end
-
-    return result
-end
-
 local function buildUrlMap(baseUrl)
     return {
         Core = {
@@ -46,6 +8,9 @@ local function buildUrlMap(baseUrl)
             Runtime = baseUrl .. "/core/runtime.lua",
             Cleanup = baseUrl .. "/core/cleanup.lua",
             Logger = baseUrl .. "/core/logger.lua",
+            ModuleLoader = baseUrl .. "/core/module_loader.lua",
+            FeatureManager = baseUrl .. "/core/feature_manager.lua",
+            GameFactory = baseUrl .. "/core/game_factory.lua",
         },
 
         Shared = {
@@ -66,39 +31,42 @@ local function buildUrlMap(baseUrl)
     }
 end
 
-local function loadCoreModules(baseUrl)
+local function loadCoreModules(loader, baseUrl)
     local urls = buildUrlMap(baseUrl)
 
     return {
         Urls = urls,
 
         Core = {
-            Config = loadRemoteModule(urls.Core.Config),
-            State = loadRemoteModule(urls.Core.State),
-            Runtime = loadRemoteModule(urls.Core.Runtime),
-            Cleanup = loadRemoteModule(urls.Core.Cleanup),
-            Logger = loadRemoteModule(urls.Core.Logger),
+            Config = loader:LoadModule(urls.Core.Config),
+            State = loader:LoadModule(urls.Core.State),
+            Runtime = loader:LoadModule(urls.Core.Runtime),
+            Cleanup = loader:LoadModule(urls.Core.Cleanup),
+            Logger = loader:LoadModule(urls.Core.Logger),
+            ModuleLoader = loader:LoadModule(urls.Core.ModuleLoader),
+            FeatureManager = loader:LoadModule(urls.Core.FeatureManager),
+            GameFactory = loader:LoadModule(urls.Core.GameFactory),
         },
 
         Shared = {
-            Services = loadRemoteModule(urls.Shared.Services),
-            Instances = loadRemoteModule(urls.Shared.Instances),
-            Formatting = loadRemoteModule(urls.Shared.Formatting),
-            Tables = loadRemoteModule(urls.Shared.Tables),
-            Players = loadRemoteModule(urls.Shared.Players),
-            Constants = loadRemoteModule(urls.Shared.Constants),
+            Services = loader:LoadModule(urls.Shared.Services),
+            Instances = loader:LoadModule(urls.Shared.Instances),
+            Formatting = loader:LoadModule(urls.Shared.Formatting),
+            Tables = loader:LoadModule(urls.Shared.Tables),
+            Players = loader:LoadModule(urls.Shared.Players),
+            Constants = loader:LoadModule(urls.Shared.Constants),
         },
 
         UI = {
-            Window = loadRemoteModule(urls.UI.Window),
-            Tabs = loadRemoteModule(urls.UI.Tabs),
-            Controls = loadRemoteModule(urls.UI.Controls),
-            Theme = loadRemoteModule(urls.UI.Theme),
+            Window = loader:LoadModule(urls.UI.Window),
+            Tabs = loader:LoadModule(urls.UI.Tabs),
+            Controls = loader:LoadModule(urls.UI.Controls),
+            Theme = loader:LoadModule(urls.UI.Theme),
         },
     }
 end
 
-function Bootstrap.CreateContext(registry, selectedGame)
+function Bootstrap.CreateContext(registry, selectedGame, moduleLoader)
     if type(registry) ~= "table" then
         error("[Bootstrap] Registry is missing or invalid.")
     end
@@ -112,12 +80,16 @@ function Bootstrap.CreateContext(registry, selectedGame)
         error("[Bootstrap] Registry.BaseUrl is missing or invalid.")
     end
 
-    local loaded = loadCoreModules(baseUrl)
+    if type(moduleLoader) ~= "table" or type(moduleLoader.LoadModule) ~= "function" then
+        error("[Bootstrap] ModuleLoader is missing or invalid.")
+    end
+
+    local loaded = loadCoreModules(moduleLoader, baseUrl)
 
     local services = loaded.Shared.Services.Get()
     local localPlayer = loaded.Shared.Players.GetLocalPlayer(services.Players)
 
-    local logger = loaded.Core.Logger.new("ScriptHub")
+    local logger = loaded.Core.Logger.new(registry.ProductName or "Atlas")
     local state = loaded.Core.State.new()
     local cleanup = loaded.Core.Cleanup.new()
     local runtime = loaded.Core.Runtime.new(services.RunService)
@@ -133,6 +105,9 @@ function Bootstrap.CreateContext(registry, selectedGame)
             Runtime = loaded.Core.Runtime,
             Cleanup = loaded.Core.Cleanup,
             Logger = loaded.Core.Logger,
+            ModuleLoader = loaded.Core.ModuleLoader,
+            FeatureManager = loaded.Core.FeatureManager,
+            GameFactory = loaded.Core.GameFactory,
         },
 
         Shared = {
@@ -163,15 +138,19 @@ function Bootstrap.CreateContext(registry, selectedGame)
 
     ctx.Loader = {}
 
-    function ctx.Loader:Get(url)
-        return loadRemoteSource(url)
+    function ctx.Loader:Get(url, bypassCache)
+        return moduleLoader:FetchSource(url, bypassCache)
     end
 
-    function ctx.Loader:LoadModule(url)
-        return loadRemoteModule(url)
+    function ctx.Loader:LoadModule(url, bypassCache)
+        return moduleLoader:LoadModule(url, bypassCache)
     end
 
-    function ctx.Loader:LoadGameModule(relativeKey)
+    function ctx.Loader:BuildUrl(relativePath)
+        return moduleLoader:BuildUrl(baseUrl, relativePath)
+    end
+
+    function ctx.Loader:LoadGameModule(relativeKey, bypassCache)
         local sources = selectedGame.Sources or {}
         local url = sources[relativeKey]
 
@@ -179,61 +158,57 @@ function Bootstrap.CreateContext(registry, selectedGame)
             error(string.format("[Bootstrap] Missing game source key: %s", tostring(relativeKey)))
         end
 
-        return loadRemoteModule(url)
+        return moduleLoader:LoadModule(url, bypassCache)
     end
 
-    function ctx.Loader:LoadUILibrary()
+    function ctx.Loader:LoadUILibrary(bypassCache)
         local url = registry.UILibraryUrl
 
         if type(url) ~= "string" or url == "" then
             error("[Bootstrap] UILibraryUrl is missing from registry.")
         end
 
-        return loadRemoteModule(url)
+        return moduleLoader:LoadModule(url, bypassCache)
     end
 
-    function ctx.Loader:LoadSharedModule(name)
+    function ctx.Loader:LoadSharedModule(name, bypassCache)
         local url = loaded.Urls.Shared[name]
         if not url then
             error(string.format("[Bootstrap] Unknown shared module: %s", tostring(name)))
         end
 
-        return loadRemoteModule(url)
+        return moduleLoader:LoadModule(url, bypassCache)
     end
 
-    function ctx.Loader:LoadCoreModule(name)
+    function ctx.Loader:LoadCoreModule(name, bypassCache)
         local url = loaded.Urls.Core[name]
         if not url then
             error(string.format("[Bootstrap] Unknown core module: %s", tostring(name)))
         end
 
-        return loadRemoteModule(url)
+        return moduleLoader:LoadModule(url, bypassCache)
     end
 
-    function ctx.Loader:LoadUIWrapper(name)
+    function ctx.Loader:LoadUIWrapper(name, bypassCache)
         local url = loaded.Urls.UI[name]
         if not url then
             error(string.format("[Bootstrap] Unknown UI wrapper: %s", tostring(name)))
         end
 
-        return loadRemoteModule(url)
+        return moduleLoader:LoadModule(url, bypassCache)
     end
 
-    function ctx.Loader:SafeCall(label, fn, ...)
-        local ok, result = pcall(fn, ...)
-        if not ok then
-            logger:Warn(string.format("%s failed: %s", tostring(label), tostring(result)))
-            return false, result
-        end
-
-        return true, result
+    function ctx.Loader:ClearSourceCache(url)
+        moduleLoader:ClearSourceCache(url)
     end
 
-    logger:Info(string.format(
-        "Bootstrapped game '%s' for PlaceId %s",
-        tostring(selectedGame.Name or "Unknown"),
-        tostring(game.PlaceId)
-    ))
+    function ctx.Loader:ClearModuleCache(url)
+        moduleLoader:ClearModuleCache(url)
+    end
+
+    function ctx.Loader:ClearAllCache()
+        moduleLoader:ClearAllCache()
+    end
 
     return ctx
 end
