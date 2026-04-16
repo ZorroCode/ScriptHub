@@ -32,7 +32,7 @@ local function makeGame(def)
 end
 
 return {
-    ProductName = "Atlas",
+    ProductName = "VANTA Hub",
     BaseUrl = BASE_URL,
     UILibraryUrl = BASE_URL .. "/ui/library/UILibrary.lua",
 
@@ -59,7 +59,7 @@ return {
     },
 
     Universal = {
-        Enabled = false,
+        Enabled = true,
         Entry = BASE_URL .. "/games/active/universal/init.lua",
     },
 }

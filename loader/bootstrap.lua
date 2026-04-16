@@ -26,7 +26,8 @@ local function buildUrlMap(baseUrl)
             Window = baseUrl .. "/ui/wrappers/window.lua",
             Tabs = baseUrl .. "/ui/wrappers/tabs.lua",
             Controls = baseUrl .. "/ui/wrappers/controls.lua",
-            Theme = baseUrl .. "/ui/themes/default.lua",
+            Theme = baseUrl .. "/ui/vanta/theme.lua",
+            App = baseUrl .. "/ui/vanta/app.lua",
         },
     }
 end
@@ -62,6 +63,7 @@ local function loadCoreModules(loader, baseUrl)
             Tabs = loader:LoadModule(urls.UI.Tabs),
             Controls = loader:LoadModule(urls.UI.Controls),
             Theme = loader:LoadModule(urls.UI.Theme),
+            App = loader:LoadModule(urls.UI.App),
         },
     }
 end
@@ -126,6 +128,7 @@ function Bootstrap.CreateContext(registry, selectedGame, moduleLoader)
             Tabs = loaded.UI.Tabs,
             Controls = loaded.UI.Controls,
             Theme = loaded.UI.Theme,
+            App = loaded.UI.App,
         },
 
         App = {

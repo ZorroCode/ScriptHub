@@ -1,6 +1,6 @@
 local Config = {}
 
-Config.WindowTitle = "Bite By Night"
+Config.WindowTitle = "VANTA Hub"
 Config.WindowToggleKey = Enum.KeyCode.RightAlt
 
 Config.TabName = "ESP"

@@ -1,24 +1,70 @@
 return {
     Init = function(ctx)
-        local UILibrary = ctx.Loader:LoadUILibrary()
+        local app = ctx.UI.App.Create(ctx.Shared.Services, ctx.UI.Theme, {
+            Title = "VANTA Hub",
+            Subtitle = "Universal fallback",
+            ToggleKey = Enum.KeyCode.RightAlt,
+            ThemeName = "Obsidian",
+            DefaultPage = "home",
+        })
 
-        local window = UILibrary:CreateWindow("Script Hub", Enum.KeyCode.RightAlt)
-        local tab = window:CreateTab("Universal", "rbxassetid://0")
+        local home = app:AddPage({
+            Id = "home",
+            Title = "Unsupported Game",
+            Subtitle = "Fallback mode is active",
+        })
 
-        tab:SetHeader("Universal", "No specific game loaded")
+        home:AddHeroCard(
+            "No dedicated module for this game",
+            "The fallback loaded correctly, but this place does not have a custom implementation yet. The hub itself is alive, so adding support later is clean and easy.",
+            "FALLBACK"
+        )
 
-        tab:Label("Status: No supported game detected.")
+        home:AddStatsRow({
+            {
+                Label = "PlaceId",
+                Value = tostring(game.PlaceId),
+                Subtext = "Current place",
+                ColorKey = "Accent",
+            },
+            {
+                Label = "GameId",
+                Value = tostring(game.GameId),
+                Subtext = "Universe identifier",
+                ColorKey = "Warning",
+            },
+        })
 
-        tab:Divider("Info")
+        local section = home:AddSection({
+            Title = "What To Do Next",
+            Subtitle = "Clean fallback so you can ship support later without rebuilding the shell.",
+        })
 
-        tab:Label("This game is not supported yet.")
-        tab:Label("You can add support in /games/active/")
+        section:AddLabel("• Drop a new game folder into /games/active/.")
+        section:AddLabel("• Add the PlaceId in loader/registry.lua.")
+        section:AddLabel("• Reuse the VANTA app pages instead of rebuilding UI from scratch.")
 
-        tab:Divider("Debug")
+        local settings = app:AddPage({
+            Id = "settings",
+            Title = "Settings",
+            Subtitle = "Theme control still works in fallback mode",
+        })
 
-        tab:Label("PlaceId: " .. tostring(game.PlaceId))
-        tab:Label("GameId: " .. tostring(game.GameId))
+        local appearance = settings:AddSection({
+            Title = "Appearance",
+            Subtitle = "Same dark preset stack used by the active game module.",
+        })
 
-        print("[ScriptHub] Universal fallback loaded.")
+        appearance:AddDropdown({
+            Title = "Theme Preset",
+            Options = app:GetThemeNames(),
+            Default = "Obsidian",
+            Callback = function(value)
+                app:SetTheme(value)
+            end,
+        })
+
+        app:Notify("VANTA Hub", "Universal fallback loaded.", 4)
+        print("[VANTA Hub] Universal fallback loaded.")
     end,
 }
