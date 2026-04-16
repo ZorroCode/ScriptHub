@@ -1,255 +1,209 @@
 local UIBuilder = {}
 
+local CATEGORY_GROUPS = {
+    { Key = "Player", Title = "Players", Description = "Survivor visibility and vitals" },
+    { Key = "Killer", Title = "Killer", Description = "Threat tracking and live pursuit info" },
+    { Key = "Generator", Title = "Generators", Description = "Objective progress and location cues" },
+    { Key = "Battery", Title = "Batteries", Description = "Loot / pickup visibility" },
+    { Key = "Fuse", Title = "Fuses", Description = "Objective item visibility" },
+    { Key = "Trap", Title = "Traps", Description = "Environmental hazard awareness" },
+}
+
 function UIBuilder.Create(ctx, config, settings, features)
     local logger = ctx.App.Logger
-    local services = ctx.Shared.Services
-    local app = ctx.UI.App.Create(services, ctx.UI.Theme, {
-        Title = "VANTA Hub",
-        Subtitle = "Bite By Night module loaded",
+    local UILibrary = ctx.Loader:LoadUILibrary()
+
+    UILibrary:SetTheme(settings.Theme or config.DefaultTheme or "Vanta")
+
+    local window = ctx.UI.Window.Create(UILibrary, {
+        Title = config.WindowTitle,
         ToggleKey = config.WindowToggleKey,
-        ThemeName = "Obsidian",
-        DefaultPage = "home",
     })
 
-    local categories = {
-        { Key = "Player", Label = "Players", Description = "Alive survivors with names, health, stamina, distance, and highlight." },
-        { Key = "Killer", Label = "Killer", Description = "Track the killer and keep pressure visible at all times." },
-        { Key = "Generator", Label = "Generators", Description = "Show objectives with progress tracker support." },
-        { Key = "Battery", Label = "Batteries", Description = "Find battery pickups faster." },
-        { Key = "Fuse", Label = "Fuses", Description = "Spot fuse objectives instantly." },
-        { Key = "Trap", Label = "Traps", Description = "Catch traps and minions before they screw you." },
-    }
+    local hub = ctx.UI.Hub.Create(window, {
+        Pages = {
+            {
+                Key = "Overview",
+                Name = "Overview",
+                HeaderTitle = "Bite By Night",
+                HeaderSubtitle = "Main control surface and fast actions",
+            },
+            {
+                Key = "Entities",
+                Name = "Entities",
+                HeaderTitle = "Entity Matrix",
+                HeaderSubtitle = "Per-category ESP controls and feature maps",
+            },
+            {
+                Key = "Runtime",
+                Name = "Runtime",
+                HeaderTitle = "Runtime Tools",
+                HeaderSubtitle = "Refresh, destroy, and operational controls",
+            },
+            {
+                Key = "Settings",
+                Name = "Settings",
+                HeaderTitle = "Hub Settings",
+                HeaderSubtitle = "Theme stack and UX tuning",
+            },
+            {
+                Key = "Info",
+                Name = "Info",
+                HeaderTitle = "Session Intel",
+                HeaderSubtitle = "Environment status and module information",
+            },
+        }
+    })
 
-    local categoryControls = {}
+    local overview = hub.Pages.Overview
+    local entities = hub.Pages.Entities
+    local runtime = hub.Pages.Runtime
+    local settingsPage = hub.Pages.Settings
+    local info = hub.Pages.Info
+
+    local statusLabel = overview:Label("Status: VANTA initialized")
+    local stateLabel = overview:Label("Armed categories: 0 / 6")
+    local placeLabel = overview:Label("Detected PlaceId: " .. tostring(game.PlaceId))
 
     local function countEnabled()
         local total = 0
-        for _, category in ipairs(categories) do
-            if settings[category.Key] and settings[category.Key].Enabled then
+        for _, group in ipairs(CATEGORY_GROUPS) do
+            if settings[group.Key] and settings[group.Key].Enabled then
                 total = total + 1
             end
         end
         return total
     end
 
-    local function featureCount()
-        local total = 0
-        for _, category in ipairs(categories) do
-            total = total + #(settings[category.Key].Features or {})
+    local function setStatus(text)
+        statusLabel:Set("Status: " .. tostring(text))
+        stateLabel:Set(string.format("Armed categories: %d / %d", countEnabled(), #CATEGORY_GROUPS))
+    end
+
+    overview:Divider("Quick Actions")
+    overview:Button("Refresh All Modules", function()
+        features.RefreshAll()
+        setStatus("Manual refresh complete")
+        window:Notify("Refresh complete", "All active ESP categories were refreshed.", 3)
+    end)
+    overview:Button("Destroy All ESP", function()
+        features.DestroyAll()
+        for _, group in ipairs(CATEGORY_GROUPS) do
+            settings[group.Key].Enabled = false
         end
-        return total
+        setStatus("Destroyed all category visuals")
+        window:Notify("All visuals destroyed", "Every ESP category was cleared from the session.", 3)
+    end)
+
+    overview:Divider("Live Modules")
+    for _, group in ipairs(CATEGORY_GROUPS) do
+        overview:Label(string.format("%s — %s", group.Title, group.Description))
     end
 
-    local home = app:AddPage({
-        Id = "home",
-        Title = "Overview",
-        Subtitle = "Dashboard, quick actions, and game status",
-    })
+    entities:Divider("Entity Control Matrix")
 
-    home:AddHeroCard(
-        "VANTA Hub / Bite By Night",
-        "Full UI rework with page navigation, search, quick actions, live theme switching, and a cleaner ESP workflow. Hit the sidebar, flip what you need, and keep the rest lean.",
-        "ACTIVE"
-    )
+    local function addCategoryControls(tab, categoryName, displayName, description)
+        tab:Label(description)
+        tab:Toggle(displayName .. " ESP", settings[categoryName].Enabled, function(value)
+            settings[categoryName].Enabled = value
 
-    home:AddStatsRow({
-        {
-            Label = "Tracked Categories",
-            Value = tostring(#categories),
-            Subtext = "Players, killer, and world objects",
-            ColorKey = "Accent",
-        },
-        {
-            Label = "Enabled Right Now",
-            Value = function() return tostring(countEnabled()) end,
-            Subtext = "Live session state",
-            ColorKey = "Success",
-        },
-        {
-            Label = "Feature Flags",
-            Value = tostring(featureCount()),
-            Subtext = "Dropdown-selected ESP details",
-            ColorKey = "Warning",
-        },
-    })
-
-    local quick = home:AddSection({
-        Title = "Quick Actions",
-        Subtitle = "Fast control over the whole module.",
-    })
-
-    local function refreshAllCards()
-        for _, category in ipairs(categories) do
-            local control = categoryControls[category.Key]
-            if control then
-                control.Toggle:Set(settings[category.Key].Enabled, true)
-                control.Features:Set(settings[category.Key].Features, true)
+            if not value then
+                features.DestroyCategory(categoryName)
             end
-            features.RefreshCategory(category.Key)
+
+            features.RefreshCategory(categoryName)
+            setStatus(displayName .. " " .. (value and "enabled" or "disabled"))
+            if settings.Notifications then
+                window:Notify(displayName, value and "Category armed." or "Category disarmed.", 2.4)
+            end
+        end, {
+            Description = "Toggle the entire " .. displayName .. " module",
+        })
+
+        tab:Dropdown(
+            displayName .. " Feature Pack",
+            config.FeatureOptions[categoryName],
+            settings[categoryName].Features,
+            function(selectedList)
+                settings[categoryName].Features = selectedList
+                features.RefreshCategory(categoryName)
+                setStatus(displayName .. " feature map updated")
+            end,
+            {
+                Multi = true,
+                NoneValue = "No features",
+            }
+        )
+    end
+
+    for _, group in ipairs(CATEGORY_GROUPS) do
+        entities:Divider(group.Title)
+        addCategoryControls(entities, group.Key, group.Title, group.Description)
+    end
+
+    runtime:Divider("Automation")
+    runtime:Toggle("Auto Refresh Loop", settings.AutoRefresh, function(value)
+        settings.AutoRefresh = value
+        setStatus("Auto refresh " .. (value and "enabled" or "disabled"))
+    end, {
+        Description = "Keep background refresh running for live ESP updates",
+    })
+    runtime:Button("Force Refresh Cycle", function()
+        features.RefreshAll()
+        setStatus("Forced one refresh cycle")
+    end)
+    runtime:Button("Clear All Drawings", function()
+        features.DestroyAll()
+        setStatus("Cleared all runtime visuals")
+    end)
+
+    runtime:Divider("Diagnostics")
+    runtime:Label("Use search in the top-right to filter cards instantly.")
+    runtime:Label("Runtime update interval: " .. tostring(config.UpdateInterval))
+    runtime:Label("Default toggle key: " .. tostring(config.WindowToggleKey))
+
+    settingsPage:Divider("Visual Stack")
+    settingsPage:Dropdown("Theme Preset", { "Vanta", "Nebula", "Ember" }, settings.Theme, function(value)
+        settings.Theme = value
+        if UILibrary.SetTheme then
+            UILibrary:SetTheme(value)
         end
-    end
-
-    quick:AddButton({
-        Title = "Enable Everything",
-        Callback = function()
-            for _, category in ipairs(categories) do
-                settings[category.Key].Enabled = true
-            end
-            refreshAllCards()
-            app:Notify("VANTA Hub", "Enabled every ESP category.", 3)
-        end,
+        if window._ApplyTheme then
+            window:_ApplyTheme(value)
+        end
+        setStatus("Theme switched to " .. tostring(value))
+    end)
+    settingsPage:Toggle("Notifications", settings.Notifications, function(value)
+        settings.Notifications = value
+        setStatus("Notifications " .. (value and "enabled" or "disabled"))
+    end, {
+        Description = "Show action toasts in the lower corner",
+    })
+    settingsPage:Toggle("Compact Mode", settings.CompactMode, function(value)
+        settings.CompactMode = value
+        setStatus("Compact mode flag set to " .. tostring(value))
+    end, {
+        Description = "Reserved for tighter card layouts in future modules",
     })
 
-    quick:AddButton({
-        Title = "Disable Everything",
-        Style = "Danger",
-        Callback = function()
-            for _, category in ipairs(categories) do
-                settings[category.Key].Enabled = false
-                features.DestroyCategory(category.Key)
-            end
-            refreshAllCards()
-            app:Notify("VANTA Hub", "Disabled every ESP category.", 3)
-        end,
-    })
+    info:Divider("Session")
+    info:Label("Hub: VANTA Hub")
+    info:Label("Game: Bite By Night")
+    info:Label("Player: " .. tostring(ctx.Shared.LocalPlayer and ctx.Shared.LocalPlayer.Name or "Unknown"))
+    info:Label("PlaceId: " .. tostring(game.PlaceId))
+    info:Label("GameId: " .. tostring(game.GameId))
 
-    quick:AddButton({
-        Title = "Refresh Targets",
-        Style = "Success",
-        Callback = function()
-            features.RefreshAll()
-            app:Notify("VANTA Hub", "Forced an ESP refresh.", 2)
-        end,
-    })
+    info:Divider("Notes")
+    info:Label("The Bite By Night module was migrated to the new VANTA card system.")
+    info:Label("New game modules can reuse GameFactory + ui/wrappers/hub.lua for faster setup.")
+    info:Label("The old flat wrapper styling was replaced by a tabbed control surface.")
 
-    local overview = home:AddSection({
-        Title = "What Changed",
-        Subtitle = "The hub now feels like a real product instead of a raw loader shell.",
-    })
-
-    overview:AddLabel("• Sidebar navigation with dedicated pages.")
-    overview:AddLabel("• Search box filters the current page instantly.")
-    overview:AddLabel("• Theme switcher with multiple dark presets.")
-    overview:AddLabel("• Better category cards for toggles + feature sets.")
-    overview:AddLabel("• Quick action workflow for mass enable, mass disable, and live refresh.")
-
-    local espPage = app:AddPage({
-        Id = "esp",
-        Title = "ESP Controls",
-        Subtitle = "Per-category controls with cleaner feature management",
-    })
-
-    for _, category in ipairs(categories) do
-        local section = espPage:AddSection({
-            Title = category.Label,
-            Subtitle = category.Description,
-        })
-
-        local toggle = section:AddToggle({
-            Title = category.Label .. " ESP",
-            Description = "Enable or disable this target group.",
-            Default = settings[category.Key].Enabled,
-            Callback = function(value)
-                settings[category.Key].Enabled = value
-                if not value then
-                    features.DestroyCategory(category.Key)
-                end
-                features.RefreshCategory(category.Key)
-                app:Notify("ESP Updated", category.Label .. " set to " .. (value and "enabled" or "disabled") .. ".", 2)
-            end,
-        })
-
-        local featureSelect = section:AddMultiSelect({
-            Title = category.Label .. " Features",
-            Options = config.FeatureOptions[category.Key],
-            Default = settings[category.Key].Features,
-            NoneText = "No feature selected",
-            Callback = function(selected)
-                settings[category.Key].Features = selected
-                features.RefreshCategory(category.Key)
-            end,
-        })
-
-        categoryControls[category.Key] = {
-            Toggle = toggle,
-            Features = featureSelect,
-        }
-    end
-
-    local toolsPage = app:AddPage({
-        Id = "tools",
-        Title = "Session Tools",
-        Subtitle = "Utility controls for this run",
-    })
-
-    local tools = toolsPage:AddSection({
-        Title = "Runtime",
-        Subtitle = "Small but useful actions for debugging and upkeep.",
-    })
-
-    tools:AddButton({
-        Title = "Log Active Definitions",
-        Callback = function()
-            local defs = features.GetDefinitions()
-            for name, def in pairs(defs) do
-                logger:Info(string.format("[VANTA] %s enabled=%s", tostring(name), tostring(def.Enabled and def.Enabled())))
-            end
-            app:Notify("VANTA Hub", "Wrote active definitions to the logger.", 3)
-        end,
-    })
-
-    tools:AddButton({
-        Title = "Clear All ESP Drawings",
-        Style = "Danger",
-        Callback = function()
-            features.DestroyAll()
-            app:Notify("VANTA Hub", "Destroyed all current ESP drawings.", 3)
-        end,
-    })
-
-    local settingsPage = app:AddPage({
-        Id = "settings",
-        Title = "Settings",
-        Subtitle = "Theme, visuals, and hub preferences",
-    })
-
-    local appearance = settingsPage:AddSection({
-        Title = "Appearance",
-        Subtitle = "All presets stay in the dark lane; that fits VANTA better anyway.",
-    })
-
-    appearance:AddDropdown({
-        Title = "Theme Preset",
-        Options = app:GetThemeNames(),
-        Default = "Obsidian",
-        Callback = function(value)
-            app:SetTheme(value)
-            app:Notify("Theme Changed", "Switched to " .. tostring(value) .. ".", 2)
-        end,
-    })
-
-    local infoPage = app:AddPage({
-        Id = "info",
-        Title = "Info",
-        Subtitle = "Current game, loader state, and key details",
-    })
-
-    local infoSection = infoPage:AddSection({
-        Title = "Session Info",
-        Subtitle = "Useful metadata for the current match and module.",
-    })
-
-    infoSection:AddLabel("Game: Bite By Night")
-    infoSection:AddLabel("PlaceId: " .. tostring(game.PlaceId))
-    infoSection:AddLabel("GameId: " .. tostring(game.GameId))
-    infoSection:AddLabel("Toggle Key: " .. tostring(config.WindowToggleKey.Name))
-
-    app:Notify("VANTA Hub", "Bite By Night module loaded clean.", 4)
-    logger:Info("Built VANTA Hub UI for Bite By Night.")
+    setStatus("ESP loaded")
+    logger:Info("Built VANTA Bite By Night UI.")
 
     return {
-        App = app,
-        RefreshCards = refreshAllCards,
+        Window = window,
+        SetStatus = setStatus,
     }
 end
 

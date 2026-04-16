@@ -11,6 +11,7 @@ local function buildUrlMap(baseUrl)
             ModuleLoader = baseUrl .. "/core/module_loader.lua",
             FeatureManager = baseUrl .. "/core/feature_manager.lua",
             GameFactory = baseUrl .. "/core/game_factory.lua",
+            GameSchema = baseUrl .. "/core/game_schema.lua",
         },
 
         Shared = {
@@ -26,8 +27,8 @@ local function buildUrlMap(baseUrl)
             Window = baseUrl .. "/ui/wrappers/window.lua",
             Tabs = baseUrl .. "/ui/wrappers/tabs.lua",
             Controls = baseUrl .. "/ui/wrappers/controls.lua",
-            Theme = baseUrl .. "/ui/vanta/theme.lua",
-            App = baseUrl .. "/ui/vanta/app.lua",
+            Theme = baseUrl .. "/ui/themes/default.lua",
+            Hub = baseUrl .. "/ui/wrappers/hub.lua",
         },
     }
 end
@@ -47,6 +48,7 @@ local function loadCoreModules(loader, baseUrl)
             ModuleLoader = loader:LoadModule(urls.Core.ModuleLoader),
             FeatureManager = loader:LoadModule(urls.Core.FeatureManager),
             GameFactory = loader:LoadModule(urls.Core.GameFactory),
+            GameSchema = loader:LoadModule(urls.Core.GameSchema),
         },
 
         Shared = {
@@ -63,7 +65,7 @@ local function loadCoreModules(loader, baseUrl)
             Tabs = loader:LoadModule(urls.UI.Tabs),
             Controls = loader:LoadModule(urls.UI.Controls),
             Theme = loader:LoadModule(urls.UI.Theme),
-            App = loader:LoadModule(urls.UI.App),
+            Hub = loader:LoadModule(urls.UI.Hub),
         },
     }
 end
@@ -91,7 +93,7 @@ function Bootstrap.CreateContext(registry, selectedGame, moduleLoader)
     local services = loaded.Shared.Services.Get()
     local localPlayer = loaded.Shared.Players.GetLocalPlayer(services.Players)
 
-    local logger = loaded.Core.Logger.new(registry.ProductName or "Atlas")
+    local logger = loaded.Core.Logger.new(registry.ProductName or "VANTA Hub")
     local state = loaded.Core.State.new()
     local cleanup = loaded.Core.Cleanup.new()
     local runtime = loaded.Core.Runtime.new(services.RunService)
@@ -110,6 +112,7 @@ function Bootstrap.CreateContext(registry, selectedGame, moduleLoader)
             ModuleLoader = loaded.Core.ModuleLoader,
             FeatureManager = loaded.Core.FeatureManager,
             GameFactory = loaded.Core.GameFactory,
+            GameSchema = loaded.Core.GameSchema,
         },
 
         Shared = {
@@ -128,7 +131,7 @@ function Bootstrap.CreateContext(registry, selectedGame, moduleLoader)
             Tabs = loaded.UI.Tabs,
             Controls = loaded.UI.Controls,
             Theme = loaded.UI.Theme,
-            App = loaded.UI.App,
+            Hub = loaded.UI.Hub,
         },
 
         App = {

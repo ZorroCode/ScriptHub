@@ -59,7 +59,7 @@ return {
     },
 
     Universal = {
-        Enabled = true,
+        Enabled = false,
         Entry = BASE_URL .. "/games/active/universal/init.lua",
     },
 }

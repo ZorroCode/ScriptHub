@@ -3,21 +3,22 @@ local Config = {}
 Config.WindowTitle = "VANTA Hub"
 Config.WindowToggleKey = Enum.KeyCode.RightAlt
 
-Config.TabName = "ESP"
+Config.TabName = "Overview"
 Config.TabIcon = "rbxassetid://0"
-Config.TabHeaderTitle = "ESP"
-Config.TabHeaderSubtitle = "Players, killer, and world objects"
+Config.TabHeaderTitle = "Bite By Night"
+Config.TabHeaderSubtitle = "Recon / ESP / runtime controls"
 
 Config.UpdateInterval = 0.10
 Config.DefaultESPKeybind = Enum.KeyCode.X
+Config.DefaultTheme = "Vanta"
 
 Config.Colors = {
-    Player = Color3.fromRGB(0, 255, 0),
-    Killer = Color3.fromRGB(255, 0, 0),
-    Generator = Color3.fromRGB(0, 170, 255),
-    Battery = Color3.fromRGB(255, 255, 0),
-    Fuse = Color3.fromRGB(255, 140, 0),
-    Trap = Color3.fromRGB(170, 0, 255),
+    Player = Color3.fromRGB(0, 255, 170),
+    Killer = Color3.fromRGB(255, 84, 122),
+    Generator = Color3.fromRGB(0, 204, 255),
+    Battery = Color3.fromRGB(255, 215, 92),
+    Fuse = Color3.fromRGB(255, 152, 69),
+    Trap = Color3.fromRGB(182, 112, 255),
 }
 
 Config.FeatureOptions = {
@@ -30,12 +31,12 @@ Config.FeatureOptions = {
 }
 
 Config.DefaultFeatures = {
-    Player = { "NameTag", "Health", "Highlight" },
-    Killer = { "NameTag", "Highlight" },
-    Generator = { "Highlight", "Progress Tracker" },
-    Battery = { "Highlight" },
-    Fuse = { "Highlight" },
-    Trap = { "Highlight" },
+    Player = { "NameTag", "Health", "Highlight", "Distance" },
+    Killer = { "NameTag", "Highlight", "Distance" },
+    Generator = { "Highlight", "Progress Tracker", "Distance" },
+    Battery = { "Highlight", "Distance" },
+    Fuse = { "Highlight", "Distance" },
+    Trap = { "Highlight", "Distance" },
 }
 
 local function cloneArray(list)
@@ -48,6 +49,10 @@ end
 
 function Config.CreateSettings()
     return {
+        Theme = Config.DefaultTheme,
+        AutoRefresh = true,
+        Notifications = true,
+        CompactMode = false,
         Player = {
             Enabled = false,
             Features = cloneArray(Config.DefaultFeatures.Player),

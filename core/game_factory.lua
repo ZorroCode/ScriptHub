@@ -20,7 +20,9 @@ function GameFactory.Boot(ctx, options)
 
     if type(features.RefreshAll) == "function" and type(configModule.UpdateInterval) == "number" then
         runtime:Every(configModule.UpdateInterval, function()
-            features.RefreshAll()
+            if settings.AutoRefresh ~= false then
+                features.RefreshAll()
+            end
         end)
     end
 
@@ -37,7 +39,7 @@ function GameFactory.Boot(ctx, options)
         end
     end)
 
-    logger:Info(string.format("[%s] Loaded.", tostring(configModule.WindowTitle or ctx.Game.Name or "Atlas")))
+    logger:Info(string.format("[%s] Loaded.", tostring(configModule.WindowTitle or ctx.Game.Name or "VANTA Hub")))
 
     return {
         UI = ui,
@@ -45,6 +47,33 @@ function GameFactory.Boot(ctx, options)
         Scanners = scanners,
         Features = features,
     }
+end
+
+function GameFactory.CreatePagedWindow(ctx, config, pageSpec)
+    local UILibrary = ctx.Loader:LoadUILibrary()
+    UILibrary:SetTheme(config.DefaultTheme or "Vanta")
+
+    local window = ctx.UI.Window.Create(UILibrary, {
+        Title = config.WindowTitle,
+        ToggleKey = config.WindowToggleKey,
+    })
+
+    return ctx.UI.Hub.Create(window, {
+        Pages = pageSpec or {
+            {
+                Key = "Overview",
+                Name = "Overview",
+                HeaderTitle = config.TabHeaderTitle or config.TabName or "Overview",
+                HeaderSubtitle = config.TabHeaderSubtitle or "Module overview",
+            },
+            {
+                Key = "Settings",
+                Name = "Settings",
+                HeaderTitle = "Settings",
+                HeaderSubtitle = "Module controls and behavior",
+            },
+        }
+    }), window
 end
 
 return GameFactory

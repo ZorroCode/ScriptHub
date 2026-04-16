@@ -16,7 +16,9 @@ return {
         local ui = UIModule.Create(ctx, Config, settings, features)
 
         runtime:Every(Config.UpdateInterval, function()
-            features.RefreshAll()
+            if settings.AutoRefresh ~= false then
+                features.RefreshAll()
+            end
         end)
 
         if localPlayer then
@@ -31,5 +33,12 @@ return {
         end)
 
         logger:Info("[Bite By Night] Loaded. Use RightAlt to toggle UI.")
+
+        return {
+            UI = ui,
+            Settings = settings,
+            Scanners = scanners,
+            Features = features,
+        }
     end,
 }

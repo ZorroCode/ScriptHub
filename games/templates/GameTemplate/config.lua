@@ -1,17 +1,20 @@
 local Config = {}
 
-Config.WindowTitle = "Atlas Template"
+Config.WindowTitle = "VANTA Template"
 Config.WindowToggleKey = Enum.KeyCode.RightAlt
 
 Config.TabName = "Main"
 Config.TabIcon = "rbxassetid://0"
-Config.TabHeaderTitle = "Atlas"
+Config.TabHeaderTitle = "VANTA"
 Config.TabHeaderSubtitle = "Template game module"
 
 Config.UpdateInterval = 0.10
+Config.DefaultTheme = "Vanta"
 
 function Config.CreateSettings()
     return {
+        Theme = Config.DefaultTheme,
+        AutoRefresh = true,
         Diagnostics = {
             Enabled = false,
         },
